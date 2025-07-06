@@ -142,18 +142,18 @@ include '../includes/header.php';
                         </form>
                     <?php endif;
                     
-                } catch (Exception $e): ?>
+                } catch (Exception $e) { ?>
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle"></i>
                         Error checking customer invoices: <?php echo htmlspecialchars($e->getMessage()); ?>
                     </div>
-                    
+
                     <div class="d-flex justify-content-between">
                         <a href="view.php?id=<?php echo $customer_id; ?>" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> Back to Customer
                         </a>
                     </div>
-                <?php endif; ?>
+                <?php } ?>
             </div>
         </div>
     </div>

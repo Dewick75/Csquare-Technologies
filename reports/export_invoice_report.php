@@ -24,6 +24,20 @@ if (empty($start_date) || empty($end_date)) {
 }
 
 try {
+    // Validate format
+    if (!in_array($format, ['csv', 'pdf'])) {
+        throw new Exception("Invalid export format: " . $format);
+    }
+
+    // Validate date range
+    if (!empty($start_date) && !empty($end_date)) {
+        $start = new DateTime($start_date);
+        $end = new DateTime($end_date);
+        if ($start > $end) {
+            throw new Exception("Start date cannot be later than end date");
+        }
+    }
+
     if ($format === 'pdf') {
         // Export as PDF
         $report->exportInvoiceReportPDF($start_date, $end_date, $customer_id);
@@ -32,8 +46,9 @@ try {
         $report->exportInvoiceReportCSV($start_date, $end_date, $customer_id);
     }
 } catch (Exception $e) {
+    error_log("Export error: " . $e->getMessage());
     $_SESSION['error'] = "Error exporting report: " . $e->getMessage();
-    header('Location: invoice_report.php');
+    header('Location: invoice_report.php?error=export_failed');
     exit;
 }
 ?>

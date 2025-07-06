@@ -99,6 +99,13 @@
                 </li>
 
                 <li class="nav-item">
+                    <a href="<?php echo getBaseUrl(); ?>" class="nav-link">
+                        <i class="fas fa-chart-pie nav-icon"></i>
+                        <span class="nav-text">View Reports</span>
+                    </a>
+                </li>
+
+                <li class="nav-item">
                     <a href="<?php echo getBaseUrl(); ?>reports/invoice_report.php" class="nav-link">
                         <i class="fas fa-file-invoice nav-icon"></i>
                         <span class="nav-text">Invoice Report</span>

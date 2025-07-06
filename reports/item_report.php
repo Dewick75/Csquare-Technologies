@@ -67,63 +67,65 @@ include '../includes/header.php';
                             <i class="fas fa-refresh"></i> Reset Filters
                         </a>
 
-                        <!-- Export Buttons -->
-                        <div class="btn-group me-2" role="group">
-                            <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="exportDropdown">
-                                <i class="fas fa-download"></i> Export
+                        <!-- Enhanced Export Section -->
+                        <div class="export-section">
+                            <!-- Export Dropdown -->
+                            <div class="btn-group me-2" role="group">
+                                <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="exportDropdown">
+                                    <i class="fas fa-download"></i> Export Report
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                                    <li><h6 class="dropdown-header"><i class="fas fa-file-export"></i> Export Options</h6></li>
+                                    <li>
+                                        <a class="dropdown-item export-link"
+                                           href="export_item_report.php?format=csv&category=<?php echo $category_id ?? ''; ?>"
+                                           data-format="csv"
+                                           title="Download as Excel-compatible CSV file">
+                                            <i class="fas fa-file-csv text-success"></i>
+                                            <span class="ms-2">CSV File</span>
+                                            <small class="text-muted d-block">Excel compatible</small>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item export-link"
+                                           href="export_item_report.php?format=pdf&category=<?php echo $category_id ?? ''; ?>"
+                                           data-format="pdf"
+                                           title="Download as PDF document">
+                                            <i class="fas fa-file-pdf text-danger"></i>
+                                            <span class="ms-2">PDF Document</span>
+                                            <small class="text-muted d-block">Print-ready format</small>
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button class="dropdown-item" onclick="copyTableData()" title="Copy table data to clipboard">
+                                            <i class="fas fa-copy text-info"></i>
+                                            <span class="ms-2">Copy to Clipboard</span>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- Quick Export Buttons -->
+                            <div class="btn-group me-2" role="group" aria-label="Quick Export">
+                                <a href="export_item_report.php?format=csv&category=<?php echo $category_id ?? ''; ?>"
+                                   class="btn btn-outline-success btn-sm export-link"
+                                   data-format="csv"
+                                   title="Quick CSV Export">
+                                    <i class="fas fa-file-csv"></i>
+                                </a>
+                                <a href="export_item_report.php?format=pdf&category=<?php echo $category_id ?? ''; ?>"
+                                   class="btn btn-outline-danger btn-sm export-link"
+                                   data-format="pdf"
+                                   title="Quick PDF Export">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                            </div>
+
+                            <!-- Print Button -->
+                            <button type="button" class="btn btn-outline-primary print-btn" title="Print this report">
+                                <i class="fas fa-print"></i> Print
                             </button>
-                            <ul class="dropdown-menu" aria-labelledby="exportDropdown">
-                                <li>
-                                    <a class="dropdown-item export-csv-link"
-                                       href="export_item_report.php?format=csv&category=<?php echo $category_id ?? ''; ?>"
-                                       data-filename="item_report_<?php echo date('Y-m-d_H-i-s'); ?>.csv"
-                                       title="Download CSV file">
-                                        <i class="fas fa-file-csv text-success"></i> Export as CSV
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item export-pdf-link"
-                                       href="export_item_report.php?format=pdf&category=<?php echo $category_id ?? ''; ?>"
-                                       title="Download PDF file">
-                                        <i class="fas fa-file-pdf text-danger"></i> Export as PDF
-                                    </a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li>
-                                    <a class="dropdown-item"
-                                       href="export_item_report.php?format=csv&category=<?php echo $category_id ?? ''; ?>"
-                                       target="_blank"
-                                       title="Direct CSV download (if above doesn't work)">
-                                        <i class="fas fa-external-link-alt text-info"></i> Direct CSV Link
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item"
-                                       href="export_item_report.php?format=pdf&category=<?php echo $category_id ?? ''; ?>"
-                                       target="_blank"
-                                       title="Direct PDF download (if above doesn't work)">
-                                        <i class="fas fa-external-link-alt text-info"></i> Direct PDF Link
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <button type="button" class="btn btn-outline-primary print-btn">
-                            <i class="fas fa-print"></i> Print Report
-                        </button>
-
-                        <!-- Simple Export Buttons (Fallback) -->
-                        <div class="btn-group ms-2" role="group">
-                            <a href="export_item_report.php?format=csv&category=<?php echo $category_id ?? ''; ?>"
-                               class="btn btn-success btn-sm"
-                               title="Download CSV file">
-                                <i class="fas fa-file-csv"></i> CSV
-                            </a>
-                            <a href="export_item_report.php?format=pdf&category=<?php echo $category_id ?? ''; ?>"
-                               class="btn btn-danger btn-sm"
-                               title="Download PDF file">
-                                <i class="fas fa-file-pdf"></i> PDF
-                            </a>
                         </div>
                     </div>
                 </form>
@@ -393,55 +395,133 @@ include '../includes/header.php';
 </div>
 
 <script>
-// Debug script for export functionality
+// Enhanced Export Functionality
 $(document).ready(function() {
-    console.log('Item report page loaded');
+    let exportInProgress = false;
 
-    // Check if Bootstrap is loaded
-    if (typeof bootstrap !== 'undefined') {
-        console.log('✅ Bootstrap is loaded');
-    } else {
-        console.log('❌ Bootstrap is not loaded');
-    }
-
-    // Check if jQuery is loaded
-    if (typeof $ !== 'undefined') {
-        console.log('✅ jQuery is loaded');
-    } else {
-        console.log('❌ jQuery is not loaded');
-    }
-
-    // Check export elements
-    setTimeout(function() {
-        const csvLinks = $('.export-csv-link');
-        const pdfLinks = $('.export-pdf-link');
-        const dropdownBtn = $('#exportDropdown');
-
-        console.log('Export elements found:');
-        console.log('- CSV links:', csvLinks.length);
-        console.log('- PDF links:', pdfLinks.length);
-        console.log('- Dropdown button:', dropdownBtn.length);
-
-        if (csvLinks.length > 0) {
-            console.log('CSV link href:', csvLinks.first().attr('href'));
+    // Export link click handler with progress indication
+    $('.export-link').on('click', function(e) {
+        if (exportInProgress) {
+            e.preventDefault();
+            return false;
         }
 
-        if (pdfLinks.length > 0) {
-            console.log('PDF link href:', pdfLinks.first().attr('href'));
+        const format = $(this).data('format');
+        const link = this;
+
+        // Show loading state
+        exportInProgress = true;
+        const originalText = $(link).html();
+        $(link).html('<i class="fas fa-spinner fa-spin"></i> Generating...');
+        $(link).addClass('disabled');
+
+        // Create a temporary iframe for download
+        const iframe = $('<iframe>').hide().appendTo('body');
+        iframe.attr('src', $(link).attr('href'));
+
+        // Reset button after delay
+        setTimeout(() => {
+            $(link).html(originalText);
+            $(link).removeClass('disabled');
+            exportInProgress = false;
+            iframe.remove();
+
+            // Show success message
+            showNotification(`${format.toUpperCase()} export completed!`, 'success');
+        }, 3000);
+
+        e.preventDefault();
+        return false;
+    });
+
+    // Copy table data to clipboard
+    window.copyTableData = function() {
+        const table = document.getElementById('reportTable');
+        if (!table) {
+            showNotification('No table data to copy', 'warning');
+            return;
         }
 
-        // Test dropdown functionality
-        dropdownBtn.on('click', function() {
-            console.log('Dropdown button clicked');
+        let csvContent = '';
+        const rows = table.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('th, td');
+            const rowData = Array.from(cells).map(cell => {
+                return '"' + cell.textContent.trim().replace(/"/g, '""') + '"';
+            });
+            csvContent += rowData.join(',') + '\n';
         });
 
-        // Test export links
-        $('.export-csv-link, .export-pdf-link').on('click', function(e) {
-            console.log('Export link clicked:', $(this).attr('href'));
-            console.log('Event prevented:', e.isDefaultPrevented());
+        navigator.clipboard.writeText(csvContent).then(() => {
+            showNotification('Table data copied to clipboard!', 'success');
+        }).catch(() => {
+            showNotification('Failed to copy data', 'error');
         });
+    };
 
-    }, 1000);
+    // Enhanced print functionality
+    $('.print-btn').on('click', function() {
+        const printWindow = window.open('', '_blank');
+        const reportContent = $('.card').last().html();
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Item Report</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                <style>
+                    @media print {
+                        .btn, .dropdown { display: none !important; }
+                        .card { border: none !important; box-shadow: none !important; }
+                        body { font-size: 12px; }
+                        table { font-size: 11px; }
+                    }
+                    .print-header { text-align: center; margin-bottom: 20px; }
+                    .print-date { text-align: right; margin-bottom: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="print-header">
+                    <h2>Item Report</h2>
+                </div>
+                <div class="print-date">
+                    Generated on: ${new Date().toLocaleDateString()}
+                </div>
+                ${reportContent}
+            </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 500);
+    });
+
+    // Notification system
+    function showNotification(message, type = 'info') {
+        const alertClass = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        }[type] || 'alert-info';
+
+        const notification = $(`
+            <div class="alert ${alertClass} alert-dismissible fade show position-fixed"
+                 style="top: 20px; right: 20px; z-index: 1050; min-width: 300px;">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `);
+
+        $('body').append(notification);
+        setTimeout(() => notification.alert('close'), 5000);
+    }
+
+    console.log('Enhanced item report functionality loaded');
 });
 </script>
 

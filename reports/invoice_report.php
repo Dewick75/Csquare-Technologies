@@ -11,10 +11,25 @@ $start_date = isset($_GET['start_date']) ? trim($_GET['start_date']) : '';
 $end_date = isset($_GET['end_date']) ? trim($_GET['end_date']) : '';
 $customer_id = isset($_GET['customer']) ? (int)$_GET['customer'] : null;
 
-// Set default date range if not provided (last 30 days)
+// Set default date range if not provided
 if (empty($start_date) || empty($end_date)) {
-    $end_date = date('Y-m-d');
-    $start_date = date('Y-m-d', strtotime('-30 days'));
+    // Try to get the actual date range from existing invoices
+    $date_range_result = $db->query("SELECT MIN(date) as min_date, MAX(date) as max_date FROM invoice");
+    if ($date_range_result && $date_range_result->num_rows > 0) {
+        $date_range = $date_range_result->fetch_assoc();
+        if ($date_range['min_date'] && $date_range['max_date']) {
+            $start_date = $date_range['min_date'];
+            $end_date = $date_range['max_date'];
+        } else {
+            // Fallback to last 30 days if no invoices exist
+            $end_date = date('Y-m-d');
+            $start_date = date('Y-m-d', strtotime('-30 days'));
+        }
+    } else {
+        // Fallback to last 30 days
+        $end_date = date('Y-m-d');
+        $start_date = date('Y-m-d', strtotime('-30 days'));
+    }
 }
 
 try {
@@ -99,28 +114,66 @@ include '../includes/header.php';
                             <i class="fas fa-refresh"></i> Reset Filters
                         </a>
 
-                        <!-- Export Buttons -->
-                        <div class="btn-group ms-2" role="group">
-                            <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-download"></i> Export
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li>
-                                    <a class="dropdown-item" href="export_invoice_report.php?format=csv&start_date=<?php echo urlencode($start_date); ?>&end_date=<?php echo urlencode($end_date); ?>&customer=<?php echo $customer_id; ?>">
-                                        <i class="fas fa-file-csv"></i> Export as CSV
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="export_invoice_report.php?format=pdf&start_date=<?php echo urlencode($start_date); ?>&end_date=<?php echo urlencode($end_date); ?>&customer=<?php echo $customer_id; ?>">
-                                        <i class="fas fa-file-pdf"></i> Export as PDF
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
+                        <!-- Enhanced Export Section -->
+                        <div class="export-section ms-2">
+                            <!-- Export Dropdown -->
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="exportDropdown">
+                                    <i class="fas fa-download"></i> Export Report
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                                    <li><h6 class="dropdown-header"><i class="fas fa-file-export"></i> Export Options</h6></li>
+                                    <li>
+                                        <a class="dropdown-item export-link"
+                                           href="export_invoice_report.php?format=csv&start_date=<?php echo urlencode($start_date); ?>&end_date=<?php echo urlencode($end_date); ?>&customer=<?php echo $customer_id; ?>"
+                                           data-format="csv"
+                                           title="Download as Excel-compatible CSV file">
+                                            <i class="fas fa-file-csv text-success"></i>
+                                            <span class="ms-2">CSV File</span>
+                                            <small class="text-muted d-block">Excel compatible</small>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item export-link"
+                                           href="export_invoice_report.php?format=pdf&start_date=<?php echo urlencode($start_date); ?>&end_date=<?php echo urlencode($end_date); ?>&customer=<?php echo $customer_id; ?>"
+                                           data-format="pdf"
+                                           title="Download as PDF document">
+                                            <i class="fas fa-file-pdf text-danger"></i>
+                                            <span class="ms-2">PDF Document</span>
+                                            <small class="text-muted d-block">Print-ready format</small>
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <button class="dropdown-item" onclick="copyTableData()" title="Copy table data to clipboard">
+                                            <i class="fas fa-copy text-info"></i>
+                                            <span class="ms-2">Copy to Clipboard</span>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
 
-                        <button type="button" class="btn btn-outline-primary ms-2 print-btn">
-                            <i class="fas fa-print"></i> Print Report
-                        </button>
+                            <!-- Quick Export Buttons -->
+                            <div class="btn-group ms-2" role="group" aria-label="Quick Export">
+                                <a href="export_invoice_report.php?format=csv&start_date=<?php echo urlencode($start_date); ?>&end_date=<?php echo urlencode($end_date); ?>&customer=<?php echo $customer_id; ?>"
+                                   class="btn btn-outline-success btn-sm export-link"
+                                   data-format="csv"
+                                   title="Quick CSV Export">
+                                    <i class="fas fa-file-csv"></i>
+                                </a>
+                                <a href="export_invoice_report.php?format=pdf&start_date=<?php echo urlencode($start_date); ?>&end_date=<?php echo urlencode($end_date); ?>&customer=<?php echo $customer_id; ?>"
+                                   class="btn btn-outline-danger btn-sm export-link"
+                                   data-format="pdf"
+                                   title="Quick PDF Export">
+                                    <i class="fas fa-file-pdf"></i>
+                                </a>
+                            </div>
+
+                            <!-- Print Button -->
+                            <button type="button" class="btn btn-outline-primary ms-2 print-btn" title="Print this report">
+                                <i class="fas fa-print"></i> Print
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -274,21 +327,147 @@ include '../includes/header.php';
 
 <script>
 $(document).ready(function() {
+    // Enhanced Export Functionality
+    let exportInProgress = false;
+
+    // Export link click handler with progress indication
+    $('.export-link').on('click', function(e) {
+        if (exportInProgress) {
+            e.preventDefault();
+            return false;
+        }
+
+        const format = $(this).data('format');
+        const link = this;
+
+        // Show loading state
+        exportInProgress = true;
+        const originalText = $(link).html();
+        $(link).html('<i class="fas fa-spinner fa-spin"></i> Generating...');
+        $(link).addClass('disabled');
+
+        // Create a temporary iframe for download
+        const iframe = $('<iframe>').hide().appendTo('body');
+        iframe.attr('src', $(link).attr('href'));
+
+        // Reset button after delay
+        setTimeout(() => {
+            $(link).html(originalText);
+            $(link).removeClass('disabled');
+            exportInProgress = false;
+            iframe.remove();
+
+            // Show success message
+            showNotification(`${format.toUpperCase()} export completed!`, 'success');
+        }, 3000);
+
+        e.preventDefault();
+        return false;
+    });
+
+    // Copy table data to clipboard
+    window.copyTableData = function() {
+        const table = document.getElementById('reportTable');
+        if (!table) {
+            showNotification('No table data to copy', 'warning');
+            return;
+        }
+
+        let csvContent = '';
+        const rows = table.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('th, td');
+            const rowData = Array.from(cells).map(cell => {
+                return '"' + cell.textContent.trim().replace(/"/g, '""') + '"';
+            });
+            csvContent += rowData.join(',') + '\n';
+        });
+
+        navigator.clipboard.writeText(csvContent).then(() => {
+            showNotification('Table data copied to clipboard!', 'success');
+        }).catch(() => {
+            showNotification('Failed to copy data', 'error');
+        });
+    };
+
+    // Enhanced print functionality
+    $('.print-btn').on('click', function() {
+        const printWindow = window.open('', '_blank');
+        const reportContent = $('.card').last().html();
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Invoice Report - ${$('#start_date').val()} to ${$('#end_date').val()}</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                <style>
+                    @media print {
+                        .btn, .dropdown { display: none !important; }
+                        .card { border: none !important; box-shadow: none !important; }
+                        body { font-size: 12px; }
+                        table { font-size: 11px; }
+                    }
+                    .print-header { text-align: center; margin-bottom: 20px; }
+                    .print-date { text-align: right; margin-bottom: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="print-header">
+                    <h2>Invoice Report</h2>
+                    <p>Period: ${$('#start_date').val()} to ${$('#end_date').val()}</p>
+                </div>
+                <div class="print-date">
+                    Generated on: ${new Date().toLocaleDateString()}
+                </div>
+                ${reportContent}
+            </body>
+            </html>
+        `);
+
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 500);
+    });
+
+    // Notification system
+    function showNotification(message, type = 'info') {
+        const alertClass = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        }[type] || 'alert-info';
+
+        const notification = $(`
+            <div class="alert ${alertClass} alert-dismissible fade show position-fixed"
+                 style="top: 20px; right: 20px; z-index: 1050; min-width: 300px;">
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `);
+
+        $('body').append(notification);
+        setTimeout(() => notification.alert('close'), 5000);
+    }
+
     // Validate date range
     $('#start_date, #end_date').on('change', function() {
         const startDate = new Date($('#start_date').val());
         const endDate = new Date($('#end_date').val());
-        
+
         if (startDate > endDate) {
-            alert('Start date cannot be later than end date.');
+            showNotification('Start date cannot be later than end date.', 'warning');
             $(this).focus();
         }
     });
-    
+
     // Quick date range buttons
     const today = new Date();
     const formatDate = (date) => date.toISOString().split('T')[0];
-    
+
     // Add quick date range buttons
     const quickRanges = $(`
         <div class="mt-2">

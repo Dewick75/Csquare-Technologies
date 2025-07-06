@@ -434,30 +434,74 @@ class Report {
 
         $invoices = $this->getInvoiceReport($start_date, $end_date, $customer_id);
 
+        if (!$invoices || $invoices->num_rows == 0) {
+            $_SESSION['error'] = "No data found for the selected criteria.";
+            header('Location: ../reports/invoice_report.php');
+            exit;
+        }
+
         $pdf = new PDFGenerator('Invoice Report');
         $pdf->setFilename('invoice_report_' . date('Y-m-d_H-i-s') . '.pdf');
+
+        // Set report period info
+        $period_info = '';
+        if ($start_date && $end_date) {
+            $period_info = "Period: " . date('M j, Y', strtotime($start_date)) . " to " . date('M j, Y', strtotime($end_date));
+        }
+
+        // Get customer name if filtering by customer
+        $customer_info = '';
+        if ($customer_id) {
+            $customer_sql = "SELECT name FROM customer WHERE id = ?";
+            $stmt = $this->db->prepare($customer_sql);
+            $stmt->bind_param("i", $customer_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($customer = $result->fetch_assoc()) {
+                $customer_info = "Customer: " . $customer['name'];
+            }
+        }
+
+        $pdf->setReportInfo($period_info, $customer_info);
         $pdf->setHeaders([
             'Invoice Number',
             'Date',
             'Customer',
-            'Customer District',
-            'Item Count',
-            'Invoice Amount'
+            'District',
+            'Items',
+            'Amount (LKR)'
         ]);
+
+        // Calculate totals
+        $total_amount = 0;
+        $total_items = 0;
+        $invoice_count = 0;
 
         // Add data rows
         while ($invoice = $invoices->fetch_assoc()) {
+            $total_amount += floatval($invoice['amount']);
+            $total_items += intval($invoice['item_count']);
+            $invoice_count++;
+
             $pdf->addRow([
                 $invoice['invoice_no'],
                 $invoice['formatted_date'],
                 $invoice['customer_name'] ?? 'N/A',
                 $invoice['customer_district'] ?? 'N/A',
-                $invoice['item_count'],
-                'LKR ' . number_format($invoice['amount'], 2)
+                number_format($invoice['item_count']),
+                number_format($invoice['amount'], 2)
             ]);
         }
 
-        $pdf->outputAsPDF();
+        // Add summary
+        $pdf->setSummary([
+            'Total Invoices' => number_format($invoice_count),
+            'Total Items Sold' => number_format($total_items),
+            'Total Revenue' => 'LKR ' . number_format($total_amount, 2),
+            'Average Invoice' => 'LKR ' . number_format($invoice_count > 0 ? $total_amount / $invoice_count : 0, 2)
+        ]);
+
+        $pdf->outputAsBeautifulPDF();
         exit;
     }
 
@@ -469,20 +513,61 @@ class Report {
 
         $invoice_items = $this->getInvoiceItemReport($start_date, $end_date, $invoice_no, $item_id);
 
+        if (!$invoice_items || $invoice_items->num_rows == 0) {
+            $_SESSION['error'] = "No data found for the selected criteria.";
+            header('Location: ../reports/invoice_item_report.php');
+            exit;
+        }
+
         $pdf = new PDFGenerator('Invoice Item Report');
         $pdf->setFilename('invoice_item_report_' . date('Y-m-d_H-i-s') . '.pdf');
+
+        // Set report period info
+        $period_info = '';
+        if ($start_date && $end_date) {
+            $period_info = "Period: " . date('M j, Y', strtotime($start_date)) . " to " . date('M j, Y', strtotime($end_date));
+        }
+
+        // Get additional filter info
+        $filter_info = '';
+        if ($invoice_no) {
+            $filter_info .= "Invoice: " . $invoice_no . " ";
+        }
+        if ($item_id) {
+            $item_sql = "SELECT item_name FROM item WHERE id = ?";
+            $stmt = $this->db->prepare($item_sql);
+            $stmt->bind_param("i", $item_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($item = $result->fetch_assoc()) {
+                $filter_info .= "Item: " . $item['item_name'];
+            }
+        }
+
+        $pdf->setReportInfo($period_info, $filter_info);
         $pdf->setHeaders([
-            'Invoice Number',
-            'Invoiced Date',
-            'Customer Name',
+            'Invoice No.',
+            'Date',
+            'Customer',
             'Item Name',
             'Item Code',
-            'Item Category',
-            'Item Unit Price'
+            'Category',
+            'Unit Price (LKR)'
         ]);
+
+        // Calculate totals
+        $total_value = 0;
+        $item_count = 0;
+        $unique_invoices = [];
+        $unique_customers = [];
 
         // Add data rows
         while ($item = $invoice_items->fetch_assoc()) {
+            $total_value += floatval($item['unit_price']);
+            $item_count++;
+            $unique_invoices[$item['invoice_no']] = true;
+            $unique_customers[$item['customer_name']] = true;
+
             $pdf->addRow([
                 $item['invoice_no'],
                 $item['formatted_date'],
@@ -490,11 +575,20 @@ class Report {
                 $item['item_name'] ?? 'N/A',
                 $item['item_code'] ?? 'N/A',
                 $item['item_category'] ?? 'N/A',
-                'LKR ' . number_format($item['unit_price'], 2)
+                number_format($item['unit_price'], 2)
             ]);
         }
 
-        $pdf->outputAsPDF();
+        // Add summary
+        $pdf->setSummary([
+            'Total Items' => number_format($item_count),
+            'Unique Invoices' => number_format(count($unique_invoices)),
+            'Unique Customers' => number_format(count($unique_customers)),
+            'Total Value' => 'LKR ' . number_format($total_value, 2),
+            'Average Price' => 'LKR ' . number_format($item_count > 0 ? $total_value / $item_count : 0, 2)
+        ]);
+
+        $pdf->outputAsBeautifulPDF();
         exit;
     }
 
@@ -506,54 +600,99 @@ class Report {
 
         $items = $this->getItemReport($category_id);
 
+        if (!$items || $items->num_rows == 0) {
+            $_SESSION['error'] = "No items found for the selected criteria.";
+            header('Location: ../reports/item_report.php');
+            exit;
+        }
+
         $pdf = new PDFGenerator('Item Inventory Report');
         $pdf->setFilename('item_report_' . date('Y-m-d_H-i-s') . '.pdf');
+
+        // Get category name if filtering
+        $filter_info = '';
+        if ($category_id) {
+            $category_sql = "SELECT category_name FROM item_category WHERE id = ?";
+            $stmt = $this->db->prepare($category_sql);
+            $stmt->bind_param("i", $category_id);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($category = $result->fetch_assoc()) {
+                $filter_info = "Category: " . $category['category_name'];
+            }
+        }
+
+        $pdf->setReportInfo("Generated on: " . date('F j, Y \a\t g:i A'), $filter_info);
         $pdf->setHeaders([
             'Item Name',
-            'Item Code',
+            'Code',
             'Category',
             'Sub Category',
-            'Quantity',
-            'Unit Price',
-            'Total Value',
+            'Qty',
+            'Unit Price (LKR)',
+            'Total Value (LKR)',
             'Stock Status'
         ]);
 
-        // Add data rows with enhanced formatting
+        // Calculate totals and statistics
+        $total_items = 0;
+        $total_quantity = 0;
+        $total_value = 0;
+        $out_of_stock = 0;
+        $low_stock = 0;
+        $good_stock = 0;
         $processed_items = [];
+
+        // Add data rows
         while ($item = $items->fetch_assoc()) {
             // Avoid duplicate item names
             if (!in_array($item['item_name'], $processed_items)) {
-                $quantity = intval($item['item_quantity']);
+                $total_items++;
+                $quantity = intval($item['item_quantity'] ?? $item['quantity'] ?? 0);
                 $unit_price = floatval($item['unit_price']);
-                $total_value = floatval($item['total_value']);
+                $total_value += floatval($item['total_value']);
+                $total_quantity += $quantity;
 
-                // Determine stock status
+                // Determine stock status and count
                 if ($quantity == 0) {
-                    $stock_status = '🔴 Out of Stock';
+                    $stock_status = 'Out of Stock';
+                    $out_of_stock++;
                 } elseif ($quantity < 10) {
-                    $stock_status = '🟡 Low Stock';
+                    $stock_status = 'Low Stock';
+                    $low_stock++;
                 } elseif ($quantity < 50) {
-                    $stock_status = '🔵 Medium Stock';
+                    $stock_status = 'Medium Stock';
+                    $good_stock++;
                 } else {
-                    $stock_status = '🟢 Good Stock';
+                    $stock_status = 'Good Stock';
+                    $good_stock++;
                 }
 
                 $pdf->addRow([
                     $item['item_name'],
                     $item['item_code'] ?? 'N/A',
                     $item['item_category'] ?? 'Uncategorized',
-                    $item['item_subcategory'] ?? 'N/A',
+                    $item['item_subcategory'] ?? $item['item_sub_category'] ?? 'N/A',
                     number_format($quantity),
-                    'LKR ' . number_format($unit_price, 2),
-                    'LKR ' . number_format($total_value, 2),
+                    number_format($unit_price, 2),
+                    number_format($item['total_value'], 2),
                     $stock_status
                 ]);
                 $processed_items[] = $item['item_name'];
             }
         }
 
-        $pdf->outputAsPDF();
+        // Add comprehensive summary
+        $pdf->setSummary([
+            'Total Items' => number_format($total_items),
+            'Total Quantity' => number_format($total_quantity),
+            'Total Inventory Value' => 'LKR ' . number_format($total_value, 2),
+            'Good Stock Items' => number_format($good_stock),
+            'Low Stock Items' => number_format($low_stock),
+            'Out of Stock Items' => number_format($out_of_stock)
+        ]);
+
+        $pdf->outputAsBeautifulPDF();
         exit;
     }
 

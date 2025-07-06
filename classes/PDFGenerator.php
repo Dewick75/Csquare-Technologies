@@ -9,12 +9,18 @@ class PDFGenerator {
     private $headers;
     private $data;
     private $filename;
-    
+    private $report_info;
+    private $filter_info;
+    private $summary;
+
     public function __construct($title = 'Report') {
         $this->title = $title;
         $this->headers = [];
         $this->data = [];
         $this->filename = 'report_' . date('Y-m-d_H-i-s') . '.pdf';
+        $this->report_info = '';
+        $this->filter_info = '';
+        $this->summary = [];
     }
     
     public function setTitle($title) {
@@ -36,6 +42,15 @@ class PDFGenerator {
     public function setData($data) {
         $this->data = $data;
     }
+
+    public function setReportInfo($report_info, $filter_info = '') {
+        $this->report_info = $report_info;
+        $this->filter_info = $filter_info;
+    }
+
+    public function setSummary($summary) {
+        $this->summary = $summary;
+    }
     
     /**
      * Generate and output PDF using HTML to PDF conversion
@@ -48,18 +63,18 @@ class PDFGenerator {
         // Output HTML that can be printed as PDF
         echo $html;
 
-        // Add JavaScript to automatically trigger print dialog
-        echo '<script>
-            window.onload = function() {
-                // Show instructions to user
-                document.body.innerHTML += "<div style=\"position: fixed; top: 10px; right: 10px; background: #007bff; color: white; padding: 10px; border-radius: 5px; z-index: 1000;\">Press Ctrl+P to save as PDF</div>";
+        // // Add JavaScript to automatically trigger print dialog
+        // echo '<script>
+        //     window.onload = function() {
+        //         // Show instructions to user
+        //         document.body.innerHTML += "<div style=\"position: fixed; top: 10px; right: 10px; background: #007bff; color: white; padding: 10px; border-radius: 5px; z-index: 1000;\">Press Ctrl+P to save as PDF</div>";
 
-                // Optional: Auto-trigger print dialog after a short delay
-                setTimeout(function() {
-                    window.print();
-                }, 1000);
-            }
-        </script>';
+        //         // Optional: Auto-trigger print dialog after a short delay
+        //         setTimeout(function() {
+        //             window.print();
+        //         }, 1000);
+        //     }
+        // </script>';
     }
 
     /**
@@ -77,34 +92,34 @@ class PDFGenerator {
         echo $html;
 
         // Add enhanced auto-print JavaScript with download simulation
-        echo '<script>
-            window.onload = function() {
-                // Add download instruction
-                var downloadMsg = document.createElement("div");
-                downloadMsg.style.cssText = "position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 15px 20px; border-radius: 8px; z-index: 10000; font-family: Arial, sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
-                downloadMsg.innerHTML = "<strong>📄 PDF Ready!</strong><br>Press <kbd>Ctrl+P</kbd> then choose <em>Save as PDF</em><br><small>This window will auto-close after printing</small>";
-                document.body.appendChild(downloadMsg);
+        // echo '<script>
+        //     window.onload = function() {
+        //         // Add download instruction
+        //         var downloadMsg = document.createElement("div");
+        //         downloadMsg.style.cssText = "position: fixed; top: 20px; right: 20px; background: #28a745; color: white; padding: 15px 20px; border-radius: 8px; z-index: 10000; font-family: Arial, sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
+        //         downloadMsg.innerHTML = "<strong>📄 PDF Ready!</strong><br>Press <kbd>Ctrl+P</kbd> then choose <em>Save as PDF</em><br><small>This window will auto-close after printing</small>";
+        //         document.body.appendChild(downloadMsg);
 
-                // Auto-trigger print dialog
-                setTimeout(function() {
-                    window.print();
+        //         // Auto-trigger print dialog
+        //         setTimeout(function() {
+        //             window.print();
 
-                    // Close window after print dialog (if opened in new window)
-                    setTimeout(function() {
-                        if (window.opener) {
-                            window.close();
-                        }
-                    }, 1000);
-                }, 800);
+        //             // Close window after print dialog (if opened in new window)
+        //             setTimeout(function() {
+        //                 if (window.opener) {
+        //                     window.close();
+        //                 }
+        //             }, 1000);
+        //         }, 800);
 
-                // Handle print completion
-                window.addEventListener("afterprint", function() {
-                    if (window.opener) {
-                        window.close();
-                    }
-                });
-            }
-        </script>';
+        //         // Handle print completion
+        //         window.addEventListener("afterprint", function() {
+        //             if (window.opener) {
+        //                 window.close();
+        //             }
+        //         });
+        //     }
+        // </script>';
     }
     
     private function generateHTML() {
@@ -361,6 +376,60 @@ class PDFGenerator {
             margin-bottom: 20px;
             text-align: center;
         }
+
+        .summary-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary-section h3 {
+            color: #495057;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 20px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .summary-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+        }
+
+        .summary-value {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 16px;
+        }
+
+        .filter-info {
+            color: #6c757d;
+            font-size: 14px;
+            margin-top: 5px;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -371,8 +440,13 @@ class PDFGenerator {
     <div class="header">
         <div class="title">' . htmlspecialchars($this->title) . '</div>
         <div class="subtitle">Professional Report Generated by ERP System</div>
-        <div class="date">📅 Generated on: ' . date('F j, Y \a\t g:i A') . '</div>
-    </div>';
+        <div class="date">📅 ' . ($this->report_info ?: 'Generated on: ' . date('F j, Y \a\t g:i A')) . '</div>';
+
+        if ($this->filter_info) {
+            $html .= '<div class="filter-info">🔍 ' . htmlspecialchars($this->filter_info) . '</div>';
+        }
+
+        $html .= '</div>';
 
         // Add enhanced summary stats if it's an item report
         if (strpos(strtolower($this->title), 'item') !== false) {
@@ -485,8 +559,29 @@ class PDFGenerator {
         }
 
         $html .= '</tbody>
-    </table>
+    </table>';
 
+        // Add summary section if available
+        if (!empty($this->summary)) {
+            $html .= '
+    <div class="summary-section">
+        <h3>📊 Report Summary</h3>
+        <div class="summary-grid">';
+
+            foreach ($this->summary as $label => $value) {
+                $html .= '
+            <div class="summary-item">
+                <span class="summary-label">' . htmlspecialchars($label) . ':</span>
+                <span class="summary-value">' . htmlspecialchars($value) . '</span>
+            </div>';
+            }
+
+            $html .= '
+        </div>
+    </div>';
+        }
+
+        $html .= '
     <div class="footer">
         <p class="company-info">🏢 Csquare Technologies ERP System</p>
         <p>Report generated on ' . date('Y-m-d H:i:s') . '</p>
@@ -503,17 +598,23 @@ class PDFGenerator {
      * Uses a simple text-based PDF generation approach
      */
     public function outputAsPDF() {
-        // Create a simple PDF using basic PDF structure
-        $pdf_content = $this->generateSimplePDF();
+        try {
+            // Create a simple PDF using basic PDF structure
+            $pdf_content = $this->generateSimplePDF();
 
-        // Set proper PDF headers
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: attachment; filename="' . $this->filename . '"');
-        header('Content-Length: ' . strlen($pdf_content));
-        header('Cache-Control: private, max-age=0, must-revalidate');
-        header('Pragma: public');
+            // Set proper PDF headers
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: attachment; filename="' . $this->filename . '"');
+            header('Content-Length: ' . strlen($pdf_content));
+            header('Cache-Control: private, max-age=0, must-revalidate');
+            header('Pragma: public');
 
-        echo $pdf_content;
+            echo $pdf_content;
+        } catch (Exception $e) {
+            // Fallback to HTML output if PDF generation fails
+            error_log("PDF generation failed: " . $e->getMessage());
+            $this->outputAsBeautifulPDF();
+        }
     }
 
     /**

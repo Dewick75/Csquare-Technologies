@@ -1,0 +1,108 @@
+# ERP System - Apache Configuration
+# Csquare Technologies
+
+# Enable URL Rewriting
+RewriteEngine On
+
+# Security Headers
+<IfModule mod_headers.c>
+    # Prevent clickjacking
+    Header always append X-Frame-Options SAMEORIGIN
+    
+    # Prevent MIME type sniffing
+    Header always set X-Content-Type-Options nosniff
+    
+    # Enable XSS protection
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Referrer Policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Prevent access to sensitive files
+<FilesMatch "\.(sql|log|ini|conf)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Prevent access to config directory from web
+<Files "config/*">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Custom Error Pages
+ErrorDocument 404 /error_pages/404.html
+ErrorDocument 500 /error_pages/500.html
+
+# Enable compression for better performance
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+    AddOutputFilterByType DEFLATE application/rss+xml
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+</IfModule>
+
+# Set cache headers for static assets
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/ico "access plus 1 month"
+    ExpiresByType image/icon "access plus 1 month"
+    ExpiresByType text/x-icon "access plus 1 month"
+    ExpiresByType application/x-icon "access plus 1 month"
+</IfModule>
+
+# PHP Configuration
+<IfModule mod_php.c>
+    # Increase memory limit for reports
+    php_value memory_limit 256M
+    
+    # Increase execution time for large exports
+    php_value max_execution_time 300
+    
+    # Increase upload limits
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    
+    # Session configuration
+    php_value session.gc_maxlifetime 3600
+    php_value session.cookie_httponly 1
+</IfModule>
+
+# Directory browsing protection
+Options -Indexes
+
+# Follow symbolic links
+Options +FollowSymLinks
+
+# Default charset
+AddDefaultCharset UTF-8
+
+# MIME types for common files
+AddType application/javascript .js
+AddType text/css .css
+
+# Redirect common URLs for better SEO
+RewriteRule ^dashboard/?$ index.php [L,R=301]
+RewriteRule ^home/?$ index.php [L,R=301]
+
+# Pretty URLs for reports (optional)
+RewriteRule ^reports/invoice/?$ reports/invoice_report.php [L]
+RewriteRule ^reports/items/?$ reports/item_report.php [L]
+RewriteRule ^reports/invoice-items/?$ reports/invoice_item_report.php [L]
+
+# Handle missing trailing slashes for directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_URI} !(.*)/$
+RewriteRule ^(.*)$ $1/ [L,R=301]
