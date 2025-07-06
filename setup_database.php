@@ -3,7 +3,7 @@
  * Database Setup Script
  * ERP System - Csquare Technologies
  * 
- * This script helps set up the database for ERP
+ * This script helps set up the database for ERP System
  */
 
 // Enable error reporting
